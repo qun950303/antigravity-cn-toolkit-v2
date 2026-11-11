@@ -2,11 +2,11 @@
  * 汉化引擎（热注入显示 + ASAR 持久化，二者分开）
  *
  * 架构说明：
- * - 默认只走热注入显示：把翻译脚本打进正在运行的窗口，界面立刻变中文，
+ * - 热注入显示：把翻译脚本打进正在运行的窗口，界面立刻变中文，
  *   只改内存里的界面，不碰安装目录下的任何文件。
- * - ASAR 持久化是手动开启的另一条路（--persist）：拆开官方 app.asar，
+ * - ASAR 持久化是默认流程的第四步：拆开官方 app.asar，
  *   把翻译写进启动文件 preload.js，再打包覆盖回去，重启之后还是中文。
- *   开启前必须由用户明确加 --persist，入口处会打印风险提示。
+ *   入口处会打印风险提示，改之前自动备份，改坏可用 --restore 恢复。
  * - 左右键菜单词条放在词典里，由翻译器在显示时翻，不改主进程菜单模板。
  *
  * 翻译脚本（浏览器里跑的那部分）说明：
@@ -127,7 +127,7 @@ function getMergedDict() {
  */
 function generateInjectorScript(dict) {
   const dictHash = crypto.createHash('md5').update(JSON.stringify(dict)).digest('hex').slice(0, 8);
-  const patchVersion = `v1.0.0-${dictHash}`;
+  const patchVersion = `v1.1.0-${dictHash}`;
   return `
 // === Antigravity Unified Clean Engine (Native Pure Edition) ===
 (function() {
@@ -949,7 +949,7 @@ async function runHotPatch() {
  */
 async function runPersist() {
   console.log('========================================');
-  console.log('  ASAR 持久化（手动开启）');
+  console.log('  ASAR 持久化');
   console.log('========================================\n');
 
   const paths = getWorkPaths();

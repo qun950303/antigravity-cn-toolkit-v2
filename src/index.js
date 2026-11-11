@@ -2,14 +2,15 @@
 /**
  * 一键入口
  *
- * 默认流程（不碰 Antigravity 安装目录下的任何文件）：
+ * 默认流程（一键全办，无脑）：
  *   步骤一：免 TUN 网络配置（检测 10808 端口、写用户环境变量、连通性测试）
  *   步骤二：热注入显示（把翻译脚本打进正在运行的窗口，立刻变中文；只改内存里的界面，不改文件）
  *   步骤三：技能与插件说明汉化（扫 .gemini 文件夹，英文说明翻成中文，改的是用户配置，不是程序文件）
+ *   步骤四：ASAR 持久化（拆开官方 app.asar、把翻译写进启动文件、再打包覆盖回去，
+ *           重启之后还是中文。改之前自动备份，改坏可用 --restore 恢复。）
  *
  * 可选：
- *   --persist   开启 ASAR 持久化：拆开官方 app.asar、把翻译写进启动文件、再打包覆盖回去，
- *               重启之后还是中文。开启前会打印风险提示。
+ *   --persist   已默认开启，留着兼容老用法，加不加都一样。
  *   --restore   一键恢复：把备份的 app.asar.backup 拷回去，恢复官方原厂文件。
  *   --help      看帮助。
  */
@@ -21,13 +22,12 @@ function printHelp() {
   console.log('Antigravity 中文汉化与免 TUN 上网工具箱（一键入口）');
   console.log('');
   console.log('用法：');
-  console.log('  node src/index.js             默认流程：免 TUN → 热注入显示 → 技能/插件说明汉化');
-  console.log('  node src/index.js --persist   默认流程 + ASAR 持久化（重启后还是中文）');
+  console.log('  node src/index.js             默认流程：免 TUN → 热注入显示 → 技能/插件说明汉化 → ASAR 持久化');
   console.log('  node src/index.js --restore   一键恢复官方原厂 app.asar（用备份恢复）');
   console.log('  node src/index.js --help      看这个帮助');
   console.log('');
-  console.log('默认流程不碰 Antigravity 安装目录下的任何文件。');
-  console.log('ASAR 持久化会覆盖官方程序文件，开启前请看清风险提示。');
+  console.log('默认流程包含 ASAR 持久化：会拆开官方 app.asar、把翻译写进启动文件、再打包覆盖回去。');
+  console.log('风险：官方更新会覆盖改动；改坏可能导致软件无法启动（改之前已自动备份，可用 --restore 恢复）。');
 }
 
 async function main() {
@@ -43,7 +43,7 @@ async function main() {
     return;
   }
 
-  const persist = args.includes('--persist');
+  // --persist 已是默认行为，留着兼容老用法，加不加都一样。
 
   console.log('╔══════════════════════════════════════════════════════╗');
   console.log('║        Antigravity 中文汉化与免 TUN 上网工具箱        ║');
@@ -81,30 +81,23 @@ async function main() {
   }
   console.log('\n');
 
-  // 步骤四：ASAR 持久化（只有明确加 --persist 才跑）
-  if (persist) {
-    console.log('========================================');
-    console.log('  风险提示（ASAR 持久化）');
-    console.log('========================================');
-    console.log('  接下来的步骤会拆开 Antigravity 安装目录下的官方程序文件');
-    console.log('  app.asar，把翻译写进启动文件，再打包覆盖回去。');
-    console.log('  风险：官方更新会覆盖改动；改坏可能导致软件无法启动；');
-    console.log('        备份已自动建立，改坏可用 node src/index.js --restore 恢复。');
-    console.log('  你加了 --persist，代表你已了解并接受以上风险。');
-    console.log('========================================\n');
-    try {
-      const perRes = await translator.runPersist();
-      summary.persist = { ok: perRes.ok, data: perRes };
-    } catch (err) {
-      summary.persist = { ok: false, error: err.message };
-      console.error('ASAR 持久化步骤异常：' + err.message);
-    }
-    console.log('\n');
-  } else {
-    console.log('提示：本次没有开启 ASAR 持久化，安装目录文件原封未动。');
-    console.log('      重启软件后界面会恢复英文，重跑一键即可；想重启后还是中文，');
-    console.log('      请加 --persist 开启持久化（开启前会打印风险提示）。\n');
+  // 步骤四：ASAR 持久化（默认就跑，重启之后还是中文）
+  console.log('========================================');
+  console.log('  提示（ASAR 持久化）');
+  console.log('========================================');
+  console.log('  接下来的步骤会拆开 Antigravity 安装目录下的官方程序文件');
+  console.log('  app.asar，把翻译写进启动文件，再打包覆盖回去。');
+  console.log('  风险：官方更新会覆盖改动；改坏可能导致软件无法启动；');
+  console.log('        备份已自动建立，改坏可用 node src/index.js --restore 恢复。');
+  console.log('========================================\n');
+  try {
+    const perRes = await translator.runPersist();
+    summary.persist = { ok: perRes.ok, data: perRes };
+  } catch (err) {
+    summary.persist = { ok: false, error: err.message };
+    console.error('ASAR 持久化步骤异常：' + err.message);
   }
+  console.log('\n');
 
   console.log('========================================');
   console.log('            执行结果汇总');
@@ -118,9 +111,7 @@ async function main() {
       : `本次未生效（${hot.data?.message || hot.error || '未发现正在运行的窗口，下次启动时重跑即可'}）`);
   console.log(`[2] 热注入显示：${hotText}`);
   console.log(`[3] 技能/插件说明汉化：${summary.skills?.ok ? '成功' : '失败（' + (summary.skills?.error || '未知原因') + '）'}`);
-  if (persist) {
-    console.log(`[4] ASAR 持久化：${summary.persist?.ok ? '成功' : '失败（' + (summary.persist?.error || '未知原因') + '）'}`);
-  }
+  console.log(`[4] ASAR 持久化：${summary.persist?.ok ? '成功' : '失败（' + (summary.persist?.error || '未知原因') + '）'}`);
 
   const allOk = summary.network?.ok && summary.skills?.ok;
   if (allOk) {
