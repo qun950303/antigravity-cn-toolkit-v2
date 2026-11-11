@@ -886,15 +886,16 @@ async function triggerLiveHotPatch(paths, injectorCode) {
 
         ws.onopen = () => {
           ws.send(JSON.stringify({
-            id: Date.now(),
+            id: 1,
             method: 'Runtime.evaluate',
             params: { expression: injectorCode, returnByValue: true }
           }));
-          setTimeout(() => {
-            clearTimeout(timer);
-            try { ws.close(); } catch (e) {}
-            resolve(true);
-          }, 150);
+        };
+
+        ws.onmessage = () => {
+          clearTimeout(timer);
+          try { ws.close(); } catch (e) {}
+          resolve(true);
         };
 
         ws.onerror = () => {
